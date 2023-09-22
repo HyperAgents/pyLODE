@@ -17,7 +17,7 @@ with open_local(["pylode/requirements.txt"]) as req:
     install_requires = req.read().split("\n")
 
 setup(
-    name="pyLODE-HyperAgents",
+    name="pylode",
     packages=find_packages(),
     package_dir={"pylode": "pylode", "img": "img"},
     package_data={"pylode": ["*.css"], "img": ["pyLODE-250.png"]},
