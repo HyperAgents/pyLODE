@@ -1,4 +1,6 @@
 import dominate
+from bs4 import BeautifulSoup
+
 from dominate.tags import (
     h2,
     h1,
@@ -23,6 +25,7 @@ from dominate.tags import (
     div,
     dt,
     dd,
+    img,
 )
 from dominate.util import raw
 from collections import defaultdict
@@ -31,7 +34,7 @@ import shutil
 from itertools import chain
 from pathlib import Path
 from typing import Union
-from rdflib import Literal, Graph
+from rdflib import Literal, Graph, URIRef
 from rdflib.namespace import (
     DC,
     DCTERMS,
@@ -55,6 +58,7 @@ try:
         get_ns,
         prop_obj_pair_html,
         section_html,
+        preferred_lang
     )
 except:
     from utils import (
@@ -65,12 +69,13 @@ except:
         get_ns,
         prop_obj_pair_html,
         section_html,
+        preferred_lang
     )
 
 try:
-    from .rdf_elements import ONTDOC, AGENT_PROPS, ONT_PROPS, CLASS_PROPS, PROP_PROPS
+    from .rdf_elements import ONTDOC, AGENT_PROPS, ONT_PROPS, CLASS_PROPS, PROP_PROPS, CONCEPT_PROPS
 except:
-    from rdf_elements import ONTDOC, AGENT_PROPS, ONT_PROPS, CLASS_PROPS, PROP_PROPS
+    from rdf_elements import ONTDOC, AGENT_PROPS, ONT_PROPS, CLASS_PROPS, PROP_PROPS, CONCEPT_PROPS
 
 try:
     from .version import __version__
@@ -98,8 +103,21 @@ class OntDoc:
         od.make_html(destination="some-resulting-html-file.html")
     """
 
-    def __init__(self, ontology: Union[Graph, Path, str]):
+    def __init__(self, 
+                 ontology: Union[Graph, Path, str],
+                 language: str="en",
+                 icon16: Union[Path,str]="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABhklEQVQ4jbWPzStEURjG3yQLirlGKUnKFO45Z+SjmXvnnmthQcpCoVhYmD/AwmJiI3OvZuZc2U3UlKU0/gAslMw9JgvhHxAr2fko7r0jHSsl+TgbTz2Lt5731/MASEiJW9ONml2QyX6rsGalmnT74v8BDf12hxJfpV8d1uwNKUBYszabdFv84L8B9X0rESVmmUup2fme0cVhJWaZHw4NWL1SewEAfDe6H3Dy6Ll456WEJsRZS630MwCAOI20ei5OBpxse5zcBZw8eS4uPpfIuDiCainIg9umBCU0GZzgLZ9Hn31OgoATL+CkLDGB5H1OKj4nFd/FBxUXJ0UZNb4edw/6nLyJXaj5FeCVyPLNIVmYK8TG1IwWb16L1gEACAFV90ftoT8bdOX0EeyY99gxBXZMgRz6qGb1KantAACI0UvE6F5XJqEjpsdURouI0Vt5gGOUkUNnPu7ObGIIMfNaGqDmjDRi9FZldF1lRgYzeqUyeoiY4ag5Iy3RgOYRM8+/M2bG8efsO4hGrpmJseyMAAAAAElFTkSuQmCC",
+                 icon32: Union[Path,str]="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAC40lEQVRYhe2UT0hUQRzHp6Iss1B3VZKIDbbdfW9mnoi4f3zzjkJQeOgS0SEIb1EWBGGlLLu460zQPQM1unUIIjA6rfpm6ZAhHjoIRVQUFUlEbG+euTsdXG1d3VL3bVD4g+9h+L35fT/8fvN7ADgY9aHY5fpIvK82HO9ysu66wxWOzbkjcekKx0a2ALYA/n2AGi3a6ArFezcidziecQygNhhrcUficjP6PwBqtGijKxy/thnVBePHywYoDsFhl53GV8SEcsTx4usCMLUewTVpc23BNvEzm6Neyf1+KcG2vwqwUjgrOJq2JmHftwmkVBRGTvncFodnbI7vChO/FRznCmHsNM7aHM9Yk7Df5iqsLMw9sMNOK2g+jS4IEz0UJv4iuJZb2RltWnB4UZqH6ioGAgAAGe5vtiZhtzDx7OoRadLmeM7m6IRjhnLMW2Vx1bA5GhAmnhIcz6/xNj4Ujsky8UspwfayjDPjsF2Y6L7N8Vzx/BfP+KPg6LbgSqd8DnfJW2CnbaLhfH5ephpqygJYvQU4Z3P82TLRsDDhUTnmrSq+Y3N0Mg+Xldy/zwEAnLMWZ3pHpNExmfLs/t0dOdVcbT0JeKxUwFP2VljjqiE47Jp53LTXNxhsUZjerTByXWX6VZWRs/4bIQ2ACv+UAomgDzLCISNZxAxZKMhIDjLy1JfsaK+I+eGBUBNk5E2x8RogX/PdcDZUqieWTSh5D6nOVKqfhoycUmlHFFIyu5RXqf7AcQDISCpv/tqbMBqK883RtmpISRoxQyJKPgGn3wNk5NEigDFa6hslqV/Kj+FdBQD0bshIDlKSLlVcoWQo36UhR80BAMB73lulMn0EMpJTqD6qJiOt3mho/8GbkT2BZNgDB/V+RI0fkOrT3kRIVQbaDizJm2hdNbINBxwk5xAj3yEjuV9rZ1iIkgxixkLBA83mz8uCjLwoGwAx0vOnFSy5mtR4VTaAQvVORMnwZgSpzkrV/QmdE2tKe46+MQAAAABJRU5ErkJggg==",
+                 css: Union[Path,str]=None,
+                 head:str=None,
+                 tail:str=None):
         self.ont = load_ontology(ontology)
+        self.language = language
+        self.icon16 = icon16
+        self.icon32 = icon32
+        self.css = css
+        self.head = head
+        self.tail = tail
         self._ontdoc_inference(self.ont)
         self.back_onts = load_background_onts()
         self.back_onts_titles = load_background_onts_titles(self.back_onts)
@@ -108,6 +126,16 @@ class OntDoc:
         self.toc: Dict[str, str] = {}
         self.fids: Dict[str, str] = {}
         self.ns = get_ns(self.ont)
+
+        # force schema namespace to expected https://schema.org/
+        def _replace(n):
+            if isinstance(n, URIRef) and n.startswith("http://schema.org/"):
+                return URIRef(SDO + n[18:])
+            return n
+        for s,p,o in self.ont:
+            if p.startswith("http://schema.org/"):
+                self.ont.remove((s,p,o))
+                self.ont.add((_replace(s),_replace(p),_replace(o)))        
 
         # make HTML doc with title
         t = None
@@ -264,10 +292,16 @@ class OntDoc:
         for s_, o in g.subject_objects(ORG.memberOf):
             g.add((s_, SDO.affiliation, o))
 
+        # indicate Reference instances from properties
+        for o in chain(
+            g.objects(None, DCTERMS.references),
+        ):
+            g.add((o, RDF.type, SDO.CreativeWork))
+
     def _make_head(
         self, schema_org: Graph, include_css: bool = True, destination: Path = None
     ):
-        """Healper function for make_html(). Makes <head>???</head> content"""
+        """Helper function for make_html(). Makes <head>???</head> content"""
         with self.doc.head:
             # use standard pyLODE stylesheet
             if include_css:
@@ -280,19 +314,27 @@ class OntDoc:
                 )
             else:
                 link(href="pylode.css", rel="stylesheet", type="text/css")
-                shutil.copy(Path("pylode.css"), destination.parent / "pylode.css")
-            link(
-                rel="icon",
-                type="image/png",
-                sizes="16x16",
-                href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABhklEQVQ4jbWPzStEURjG3yQLirlGKUnKFO45Z+SjmXvnnmthQcpCoVhYmD/AwmJiI3OvZuZc2U3UlKU0/gAslMw9JgvhHxAr2fko7r0jHSsl+TgbTz2Lt5731/MASEiJW9ONml2QyX6rsGalmnT74v8BDf12hxJfpV8d1uwNKUBYszabdFv84L8B9X0rESVmmUup2fme0cVhJWaZHw4NWL1SewEAfDe6H3Dy6Ll456WEJsRZS630MwCAOI20ei5OBpxse5zcBZw8eS4uPpfIuDiCainIg9umBCU0GZzgLZ9Hn31OgoATL+CkLDGB5H1OKj4nFd/FBxUXJ0UZNb4edw/6nLyJXaj5FeCVyPLNIVmYK8TG1IwWb16L1gEACAFV90ftoT8bdOX0EeyY99gxBXZMgRz6qGb1KantAACI0UvE6F5XJqEjpsdURouI0Vt5gGOUkUNnPu7ObGIIMfNaGqDmjDRi9FZldF1lRgYzeqUyeoiY4ag5Iy3RgOYRM8+/M2bG8efsO4hGrpmJseyMAAAAAElFTkSuQmCC",
-            )
-            link(
-                rel="icon",
-                type="image/png",
-                sizes="32x32",
-                href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAC40lEQVRYhe2UT0hUQRzHp6Iss1B3VZKIDbbdfW9mnoi4f3zzjkJQeOgS0SEIb1EWBGGlLLu460zQPQM1unUIIjA6rfpm6ZAhHjoIRVQUFUlEbG+euTsdXG1d3VL3bVD4g+9h+L35fT/8fvN7ADgY9aHY5fpIvK82HO9ysu66wxWOzbkjcekKx0a2ALYA/n2AGi3a6ArFezcidziecQygNhhrcUficjP6PwBqtGijKxy/thnVBePHywYoDsFhl53GV8SEcsTx4usCMLUewTVpc23BNvEzm6Neyf1+KcG2vwqwUjgrOJq2JmHftwmkVBRGTvncFodnbI7vChO/FRznCmHsNM7aHM9Yk7Df5iqsLMw9sMNOK2g+jS4IEz0UJv4iuJZb2RltWnB4UZqH6ioGAgAAGe5vtiZhtzDx7OoRadLmeM7m6IRjhnLMW2Vx1bA5GhAmnhIcz6/xNj4Ujsky8UspwfayjDPjsF2Y6L7N8Vzx/BfP+KPg6LbgSqd8DnfJW2CnbaLhfH5ephpqygJYvQU4Z3P82TLRsDDhUTnmrSq+Y3N0Mg+Xldy/zwEAnLMWZ3pHpNExmfLs/t0dOdVcbT0JeKxUwFP2VljjqiE47Jp53LTXNxhsUZjerTByXWX6VZWRs/4bIQ2ACv+UAomgDzLCISNZxAxZKMhIDjLy1JfsaK+I+eGBUBNk5E2x8RogX/PdcDZUqieWTSh5D6nOVKqfhoycUmlHFFIyu5RXqf7AcQDISCpv/tqbMBqK883RtmpISRoxQyJKPgGn3wNk5NEigDFa6hslqV/Kj+FdBQD0bshIDlKSLlVcoWQo36UhR80BAMB73lulMn0EMpJTqD6qJiOt3mho/8GbkT2BZNgDB/V+RI0fkOrT3kRIVQbaDizJm2hdNbINBxwk5xAj3yEjuV9rZ1iIkgxixkLBA83mz8uCjLwoGwAx0vOnFSy5mtR4VTaAQvVORMnwZgSpzkrV/QmdE2tKe46+MQAAAABJRU5ErkJggg==",
-            )
+                shutil.copy(Path(__file__).parent / "pylode.css", destination.parent / "pylode.css")
+            if self.css:
+                if isinstance(self.css, str):                
+                    link(href=self.css, rel="stylesheet", type="text/css")
+                if isinstance(self.css, list):
+                    for css in self.css:
+                        link(href=css, rel="stylesheet", type="text/css")
+            if self.icon16 is not None:
+                link(
+                    rel="icon",
+                    type="image/png",
+                    sizes="16x16",
+                    href=self.icon16,
+                )
+            if self.icon32 is not None:
+                link(
+                    rel="icon",
+                    type="image/png",
+                    sizes="32x32",
+                    href=self.icon32,
+                )
             meta(http_equiv="Content-Type", content="text/html; charset=utf-8")
             script(
                 raw("\n" + schema_org.serialize(format="json-ld") + "\n\t"),
@@ -304,26 +346,20 @@ class OntDoc:
         """Healper function for make_html(). Makes <body>???</body> content.
 
         Just calls other helper functions in order"""
-        self._make_pylode_logo()
+        self._make_hyperagent_logo()
         self._make_metadata()
+        self._make_include_head()
         self._make_main_sections()
         self._make_namespaces()
         self._make_legend()
         self._make_toc()
+        self._make_include_tail()
 
-    def _make_pylode_logo(self):
+    def _make_hyperagent_logo(self):
         with self.doc:
-            with div(id="pylode"):
-                with p("made by "):
-                    with a(href="https://github.com/rdflib/pyLODE"):
-                        span("p", id="p")
-                        span("y", id="y")
-                        span("LODE")
-                    a(
-                        __version__,
-                        href="https://github.com/rdflib/pyLODE/release/" + __version__,
-                        id="version",
-                    )
+            with div(id="hyperagent"):
+                span("made by ")
+                a(img(src="HyperAgents-logo.jpg"), href="https://project.hyperagents.org/")
 
     def _make_metadata(self):
         # get all ONT_PROPS props and their (multiple) values
@@ -337,9 +373,11 @@ class OntDoc:
             for p_, o in self.ont.predicate_objects(s_):
                 if p_ in ONT_PROPS:
                     this_onts_props[p_].append(o)
+                if p_ == SDO.image:
+                    this_onts_props[p_].append(o)
 
         # make HTML for all props in order of ONT_PROPS
-        sec = div(h1(this_onts_props[DCTERMS.title]), id="metadata", _class="section")
+        sec = div(h1(preferred_lang(this_onts_props[DCTERMS.title], self.language)), id="metadata", _class="section")
         sec.appendChild(h2("Metadata"))
         d = dl(div(dt(strong("IRI")), dd(code(str(iri)))))
         for prop in ONT_PROPS:
@@ -355,9 +393,12 @@ class OntDoc:
                         self.props_labeled[prop]["description"],
                         self.props_labeled[prop]["ont_title"],
                         self.fids,
-                        this_onts_props[prop],
+                        preferred_lang(this_onts_props[prop], self.language),
                     )
                 )
+        # include illustration if present
+        for o in this_onts_props[SDO.image]:
+            d.appendChild(div(dt("Illustration"), dd(img(src=str(o)))))
         sec.appendChild(d)
         self.content.appendChild(sec)
 
@@ -405,6 +446,31 @@ class OntDoc:
 
         return sdo
 
+    def _make_include_head(self):
+        if not self.head:
+            return
+        try:
+            with open(self.head) as f:
+                head = f.read()
+                soup = BeautifulSoup(head, 'html.parser')
+                self.toc_head = [(pos.name, pos.text) for pos in soup.select('h2,h3')]
+                self.content.appendChild(raw(head))
+        except Exception as ex:
+            print(ex)
+            
+
+    def _make_include_tail(self):
+        if not self.tail:
+            return
+        try:
+            with open(self.tail) as f: 
+                tail = f.read()
+                soup = BeautifulSoup(tail, 'html.parser')
+                self.toc_tail = [(pos.name, pos.text) for pos in soup.select('h2,h3')]
+                self.content.appendChild(raw(tail))
+        except Exception as ex:
+            print(ex)
+
     def _make_main_sections(self):
         with self.content:
             if (None, RDF.type, OWL.Class) in self.ont:
@@ -419,6 +485,7 @@ class OntDoc:
                     "classes",
                     self.fids,
                     self.props_labeled,
+                    language = self.language
                 )
                 d.render()
 
@@ -434,6 +501,7 @@ class OntDoc:
                     "properties",
                     self.fids,
                     self.props_labeled,
+                    language = self.language
                 )
                 d.render()
 
@@ -449,6 +517,7 @@ class OntDoc:
                     "objectproperties",
                     self.fids,
                     self.props_labeled,
+                    language = self.language
                 )
                 d.render()
 
@@ -464,6 +533,7 @@ class OntDoc:
                     "datatypeproperties",
                     self.fids,
                     self.props_labeled,
+                    language = self.language
                 )
                 d.render()
 
@@ -479,6 +549,7 @@ class OntDoc:
                     "annotationproperties",
                     self.fids,
                     self.props_labeled,
+                    language = self.language
                 )
                 d.render()
 
@@ -494,6 +565,23 @@ class OntDoc:
                     "functionalproperties",
                     self.fids,
                     self.props_labeled,
+                    language = self.language
+                )
+                d.render()
+
+            if (None, RDF.type, SKOS.Concept) in self.ont:
+                d = section_html(
+                    "SKOS Concepts",
+                    self.ont,
+                    self.back_onts,
+                    self.ns,
+                    SKOS.Concept,
+                    CONCEPT_PROPS,
+                    self.toc,
+                    "concepts",
+                    self.fids,
+                    self.props_labeled,
+                    language = self.language
                 )
                 d.render()
 
@@ -549,6 +637,10 @@ class OntDoc:
                         with tr():
                             td(sup("ni", _class="sup-ni", title="OWL Named Individual"))
                             td("Named Individuals")
+                    if self.toc.get("concepts") is not None:
+                        with tr():
+                            td(sup("k", _class="sup-k", title="SKOS Concept"))
+                            td("SKOS Concepts")
 
     def _make_namespaces(self):
         # get only namespaces used in ont
@@ -635,6 +727,16 @@ class OntDoc:
                             h4(a("Functional Properties", href="#functionalproperties"))
                             with ul(_class="second"):
                                 for c in self.toc["functionalproperties"]:
+                                    li(a(c[1], href=c[0]))
+
+                    if (
+                        self.toc.get("concepts") is not None
+                        and len(self.toc["concepts"]) > 0
+                    ):
+                        with li():
+                            h4(a("Concepts", href="#concepts"))
+                            with ul(_class="second"):
+                                for c in self.toc["concepts"]:
                                     li(a(c[1], href=c[0]))
 
                     with li():

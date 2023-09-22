@@ -15,6 +15,7 @@ from rdflib.namespace import (
 )
 
 ONTDOC = Namespace("https://w3id.org/profile/ontdoc/")
+CC = Namespace("http://creativecommons.org/ns#")
 
 # metadata properties for OWL Ontology instances
 ONT_PROPS = [
@@ -38,6 +39,7 @@ ONT_PROPS = [
     SKOS.note,
     DCTERMS.description,
     ONTDOC.restriction,
+    CC.license,
 ]
 
 # properties for OWL Class instances
@@ -50,6 +52,7 @@ CLASS_PROPS = [
     DCTERMS.source,
     DCTERMS.provenance,
     SKOS.note,
+    SKOS.related,
     RDFS.subClassOf,
     OWL.equivalentClass,
     # OWL.restriction,
@@ -90,6 +93,13 @@ AGENT_PROPS = [
     SDO.url,
 ]
 
+# properties for CreativeWork
+CREATIVEWORK_PROPS = [
+    DCTERMS.title,
+    DCTERMS.bibliographicCitation,
+    DCTERMS.identifier,
+]
+
 # properties for OWL restriction instances
 RESTRICTION_PROPS = [
     OWL.allValuesFrom,
@@ -105,8 +115,29 @@ RESTRICTION_PROPS = [
     OWL.maxQualifiedCardinality,
 ]
 
+# properties for SKOS Concept instances
+CONCEPT_PROPS = [
+    RDFS.isDefinedBy,
+    DCTERMS.title,
+    DCTERMS.description,
+    SKOS.scopeNote,
+    SKOS.example,
+    SKOS.prefLabel,
+    SKOS.definition,
+    SKOS.historyNote,
+    SKOS.editorialNote,
+    SKOS.related,
+    SKOS.broader,
+    SKOS.narrower,
+    DCTERMS.source,
+    DCTERMS.provenance,
+    DCTERMS.references,
+    SKOS.note,
+    RDFS.subClassOf,
+]
+
 # all known properties
-PROPS = set(ONT_PROPS + CLASS_PROPS + PROP_PROPS + AGENT_PROPS + RESTRICTION_PROPS)
+PROPS = set(ONT_PROPS + CLASS_PROPS + PROP_PROPS + AGENT_PROPS + CREATIVEWORK_PROPS + CONCEPT_PROPS + RESTRICTION_PROPS)
 
 ONT_TYPES = {
     OWL.Class: ("c", "OWL/RDFS Class"),
@@ -117,6 +148,7 @@ ONT_TYPES = {
     OWL.FunctionalProperty: ("fp", "OWL Functional Property"),
     OWL.InverseFunctionalProperty: ("ifp", "OWL Inverse Functional Property"),
     OWL.NamedIndividual: ("ni", "OWL Named Individual"),
+    SKOS.Concept: ("k", "SKOS Concept"),
 }
 
 RESTRICTION_TYPES = [

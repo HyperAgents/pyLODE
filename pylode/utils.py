@@ -2,7 +2,7 @@ import logging
 import pickle
 import re
 from collections import defaultdict
-from itertools import chain
+from itertools import accumulate, chain
 from pathlib import Path
 from typing import Optional, List, Tuple, Union, cast
 
@@ -25,6 +25,7 @@ from dominate.tags import (
     dt,
     dd,
     h2,
+    img,
 )
 from dominate.util import raw, text
 from rdflib import BNode, Literal, Graph, URIRef
@@ -343,6 +344,7 @@ def rdf_obj_html(
     obj: List[Union[URIRef, BNode, Literal]],
     fids,
     rdf_type=None,
+    language="en"
 ):
     """Makes a sensible HTML rendering of an RDF resource.
 
@@ -392,7 +394,9 @@ def rdf_obj_html(
                         return x_
 
             try:
-                qname = ont__.compute_qname(iri__, True)
+                qname = ont__.compute_qname(iri__, False)
+            except KeyError:
+                qname = iri__
             except ValueError:
                 qname = iri__
 
@@ -522,6 +526,33 @@ def rdf_obj_html(
                     sp.appendChild(_affiliation_html(ont__, affiliation))
             return sp
 
+        def _creative_work_html(ont__, obj__: Union[URIRef, BNode, Literal]):
+            if isinstance(obj__, Literal):
+                return span(str(obj__))
+            title = None
+            bibliographicCitation = None
+            identifier = None
+
+            for px, o in ont__.predicate_objects(obj__):
+                if px in CREATIVEWORK_PROPS:
+                    if px == DCTERMS.title:
+                        title = str(o)
+                    elif px == DCTERMS.bibliographicCitation:
+                        bibliographicCitation = str(o)
+                    elif px == DCTERMS.identifier:
+                        identifier = str(o)
+
+            sp = span()
+
+            if title is not None:
+                sp.appendChild(span("[",title,"]"))
+            if bibliographicCitation is not None:
+                sp.appendChild(span(bibliographicCitation))
+            if identifier is not None:
+                sp.appendChild(span(a(identifier,href=identifier)))
+
+            return sp
+
         def _restriction_html(ont__, obj__, ns__):
             prop = None
             card = None
@@ -602,13 +633,18 @@ def rdf_obj_html(
             # all typing added in OntDoc inferencing
             if (obj__, RDF.type, PROV.Agent) in ont__:
                 return _agent_html(ont__, obj__)
+            if (obj__, RDF.type, SDO.CreativeWork) in ont__:
+                return _creative_work_html(ont__, obj__)
             elif (obj__, RDF.type, OWL.Restriction) in ont__:
                 return _restriction_html(ont__, obj__, ns__)
             else:  # (obj, RDF.type, OWL.Class) in ont:  # Set Class
                 return _setclass_html(ont__, obj__, back_onts__, ns__, fids__)
 
         if isinstance(obj_, URIRef):
-            ret = _hyperlink_html(ont_, back_onts_, ns_, obj_, fids_, rdf_type__=rdf_type_)
+            if (obj_, RDF.type, PROV.Agent) in ont_:
+                ret = _agent_html(ont_, obj_)
+            else:
+                ret = _hyperlink_html(ont_, back_onts_, ns_, obj_, fids_, rdf_type__=rdf_type_)
         elif isinstance(obj_, BNode):
             ret = _bn_html(ont_, back_onts_, ns_, fids_, obj_)
         else:  # isinstance(obj, Literal):
@@ -616,6 +652,8 @@ def rdf_obj_html(
 
         # TODO: replace this filler-inner when all subfunctions are returning fine
         return ret if ret is not None else span("xxx")
+
+    obj = preferred_lang(obj, language)
 
     if len(obj) == 1:
         return _rdf_obj_single_html(ont, back_onts, ns, obj[0], fids, rdf_type_=rdf_type)
@@ -640,6 +678,7 @@ def prop_obj_pair_html(
     fids,
     obj: List[Union[URIRef, BNode, Literal]],
     obj_type: Optional[str] = None,
+    language="en",
 ):
     """Makes an HTML Definition list dt & dd pair or a Table tr, th & td set,
     for a given RDF property & resource pair"""
@@ -649,7 +688,7 @@ def prop_obj_pair_html(
         _class="hover_property",
         href=str(prop_iri),
     )
-    o = rdf_obj_html(ont, back_onts, ns, obj, fids, rdf_type=obj_type)
+    o = rdf_obj_html(ont, back_onts, ns, obj, fids, rdf_type=obj_type, language=language)
 
     if table_or_dl == "table":
         t = tr(th(prop), td(o))
@@ -670,6 +709,7 @@ def section_html(
     toc_ul_id: str,
     fids: dict,
     props_labeled,
+    language="en",
 ):
     """Makes all the HTML (div, title & table) for all instances of a
     given RDF class, e.g. owl:Class or owl:ObjectProperty"""
@@ -686,6 +726,7 @@ def section_html(
         this_props_,
         fids_: dict,
         props_labeled_,
+        language="en",
     ):
         """Makes all the HTML (div, title & table) for one instance of a
         given RDF class, e.g. owl:Class or owl:ObjectProperty"""
@@ -702,6 +743,11 @@ def section_html(
             _class="property entity",
         )
         t = table(tr(th("IRI"), td(code(str(iri)))))
+        #t = dl(dt("IRI"), dd(code(str(iri))))
+        # include illustration if present
+        for o in ont_.objects(iri, SDO.image):
+            t.appendChild(tr(th("Image"), td(img(src=str(o)))))        
+            #t.appendChild(img(src=str(o)))        
         # order the properties as per PROP_PROPS list order
         for prop in props_list:
             if prop != DCTERMS.title:
@@ -724,6 +770,7 @@ def section_html(
                             else None,
                             fids_,
                             this_props_[prop],
+                            language=language
                         )
                     )
         d.appendChild(t)
@@ -759,7 +806,7 @@ def section_html(
                 this_title = make_title_from_iri(s_)
             else:
                 this_fid = generate_fid(this_props[DCTERMS.title][0], s_, fids)
-                this_title = this_props[DCTERMS.title]
+                this_title = preferred_lang(this_props[DCTERMS.title], language)
 
             # add to ToC
             if toc.get(toc_ul_id) is None:
@@ -780,6 +827,7 @@ def section_html(
                     this_props,
                     fids,
                     props_labeled,
+                    language=language
                 )
             )
 
@@ -788,6 +836,14 @@ def section_html(
 
 def de_space_html(html):
     return "".join([l_.strip().replace("\n", "") for l_ in html.split("\n")])
+
+def preferred_lang(objects, language="en"):
+    """if the list of objects contains a literal with a language tag, keep only literals with the requested language tag."""
+    if any(isinstance(o, Literal) and o.language for o in objects ):
+        out = [o for o in objects if (not isinstance(o, Literal)) or o.language == language ]
+        if out:
+            objects = out
+    return objects
 
 
 if __name__ == "__main__":
