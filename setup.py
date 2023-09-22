@@ -2,7 +2,7 @@
 import codecs
 import os
 from setuptools import setup, find_packages
-from pylode import __version__
+#from pylode import __version__
 
 
 def open_local(paths, mode="r", encoding="utf8"):
@@ -17,16 +17,16 @@ with open_local(["pylode/requirements.txt"]) as req:
     install_requires = req.read().split("\n")
 
 setup(
-    name="pyLODE",
+    name="pyLODE-HyperAgents",
     packages=find_packages(),
     package_dir={"pylode": "pylode", "img": "img"},
     package_data={"pylode": ["*.css"], "img": ["pyLODE-250.png"]},
-    version=__version__,
-    description="An OWL ontology documentation tool using Python and templating, based on LODE.",
+    version="3.0.0-hyperagents",
+    description="Fork of pyLODE, an OWL ontology documentation tool using Python and templating, based on LODE.",
     author="Nicholas J. Car",
     author_email="nicholas.car@surroundaustralia.com",
-    url="https://github.com/rdflib/pyLODE",
-    download_url=f"https://github.com/RDFLib/pyLODE/releases/tag/{__version__}",
+    url="https://github.com/HyperAgents/pyLODE",
+    download_url=f"https://github.com/HyperAgents/pyLODE/releases/tag/3.0.0-hyperagents",
     license="LICENSE",
     keywords=["Semantic Web", "OWL", "ontology", "template", "HTML", "documentation"],
     long_description=long_description,
@@ -52,8 +52,8 @@ setup(
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
     project_urls={
-        "Bug Reports": "https://github.com/rdflib/pyLODE/issues",
-        "Source": "https://github.com/rdflib/pyLODE/",
+        "Bug Reports": "https://github.com/HyperAgents/pyLODE/issues",
+        "Source": "https://github.com/HyperAgents/pyLODE/",
     },
     install_requires=install_requires,
     long_description_content_type="text/x-rst",
