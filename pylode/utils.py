@@ -710,9 +710,16 @@ def section_html(
     fids: dict,
     props_labeled,
     language="en",
+    only_defined=False
 ):
     """Makes all the HTML (div, title & table) for all instances of a
     given RDF class, e.g. owl:Class or owl:ObjectProperty"""
+    # get the ontology URIs
+    ont_iris = list(chain(
+        ont.subjects(predicate=RDF.type, object=OWL.Ontology),
+        ont.subjects(predicate=RDF.type, object=SKOS.ConceptScheme),
+        ont.subjects(predicate=RDF.type, object=PROF.Profile),
+    ))
 
     def _element_html(
         ont_: Graph,
@@ -780,6 +787,13 @@ def section_html(
     elems.appendChild(h2(section_title))
     # get all objects of this class
     for s_ in ont.subjects(predicate=RDF.type, object=obj_class):
+        if only_defined:
+            is_defined = False
+            for ont_iri in ont_iris:
+                if ont_iri in ont.objects(subject=s_, predicate=RDFS.isDefinedBy):
+                    is_defined = True
+            if not is_defined:
+                continue
         if obj_class == RDF.Property:
             specialised_props = [
                 (s_, RDF.type, OWL.ObjectProperty),

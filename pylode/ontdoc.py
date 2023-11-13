@@ -110,7 +110,8 @@ class OntDoc:
                  icon32: Union[Path,str]="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAC40lEQVRYhe2UT0hUQRzHp6Iss1B3VZKIDbbdfW9mnoi4f3zzjkJQeOgS0SEIb1EWBGGlLLu460zQPQM1unUIIjA6rfpm6ZAhHjoIRVQUFUlEbG+euTsdXG1d3VL3bVD4g+9h+L35fT/8fvN7ADgY9aHY5fpIvK82HO9ysu66wxWOzbkjcekKx0a2ALYA/n2AGi3a6ArFezcidziecQygNhhrcUficjP6PwBqtGijKxy/thnVBePHywYoDsFhl53GV8SEcsTx4usCMLUewTVpc23BNvEzm6Neyf1+KcG2vwqwUjgrOJq2JmHftwmkVBRGTvncFodnbI7vChO/FRznCmHsNM7aHM9Yk7Df5iqsLMw9sMNOK2g+jS4IEz0UJv4iuJZb2RltWnB4UZqH6ioGAgAAGe5vtiZhtzDx7OoRadLmeM7m6IRjhnLMW2Vx1bA5GhAmnhIcz6/xNj4Ujsky8UspwfayjDPjsF2Y6L7N8Vzx/BfP+KPg6LbgSqd8DnfJW2CnbaLhfH5ephpqygJYvQU4Z3P82TLRsDDhUTnmrSq+Y3N0Mg+Xldy/zwEAnLMWZ3pHpNExmfLs/t0dOdVcbT0JeKxUwFP2VljjqiE47Jp53LTXNxhsUZjerTByXWX6VZWRs/4bIQ2ACv+UAomgDzLCISNZxAxZKMhIDjLy1JfsaK+I+eGBUBNk5E2x8RogX/PdcDZUqieWTSh5D6nOVKqfhoycUmlHFFIyu5RXqf7AcQDISCpv/tqbMBqK883RtmpISRoxQyJKPgGn3wNk5NEigDFa6hslqV/Kj+FdBQD0bshIDlKSLlVcoWQo36UhR80BAMB73lulMn0EMpJTqD6qJiOt3mho/8GbkT2BZNgDB/V+RI0fkOrT3kRIVQbaDizJm2hdNbINBxwk5xAj3yEjuV9rZ1iIkgxixkLBA83mz8uCjLwoGwAx0vOnFSy5mtR4VTaAQvVORMnwZgSpzkrV/QmdE2tKe46+MQAAAABJRU5ErkJggg==",
                  css: Union[Path,str]=None,
                  head:str=None,
-                 tail:str=None):
+                 tail:str=None,
+                 only_defined=False):
         self.ont = load_ontology(ontology)
         self.language = language
         self.icon16 = icon16
@@ -118,6 +119,7 @@ class OntDoc:
         self.css = css
         self.head = head
         self.tail = tail
+        self.only_defined = only_defined
         self._ontdoc_inference(self.ont)
         self.back_onts = load_background_onts()
         self.back_onts_titles = load_background_onts_titles(self.back_onts)
@@ -485,7 +487,8 @@ class OntDoc:
                     "classes",
                     self.fids,
                     self.props_labeled,
-                    language = self.language
+                    language = self.language,
+                    only_defined = self.only_defined
                 )
                 d.render()
 
@@ -501,7 +504,8 @@ class OntDoc:
                     "properties",
                     self.fids,
                     self.props_labeled,
-                    language = self.language
+                    language = self.language,
+                    only_defined = self.only_defined
                 )
                 d.render()
 
@@ -517,7 +521,8 @@ class OntDoc:
                     "objectproperties",
                     self.fids,
                     self.props_labeled,
-                    language = self.language
+                    language = self.language,
+                    only_defined = self.only_defined
                 )
                 d.render()
 
@@ -533,7 +538,8 @@ class OntDoc:
                     "datatypeproperties",
                     self.fids,
                     self.props_labeled,
-                    language = self.language
+                    language = self.language,
+                    only_defined = self.only_defined
                 )
                 d.render()
 
@@ -549,7 +555,8 @@ class OntDoc:
                     "annotationproperties",
                     self.fids,
                     self.props_labeled,
-                    language = self.language
+                    language = self.language,
+                    only_defined = self.only_defined
                 )
                 d.render()
 
@@ -565,7 +572,8 @@ class OntDoc:
                     "functionalproperties",
                     self.fids,
                     self.props_labeled,
-                    language = self.language
+                    language = self.language,
+                    only_defined = self.only_defined
                 )
                 d.render()
 
@@ -581,7 +589,8 @@ class OntDoc:
                     "concepts",
                     self.fids,
                     self.props_labeled,
-                    language = self.language
+                    language = self.language,
+                    only_defined = self.only_defined                    
                 )
                 d.render()
 
